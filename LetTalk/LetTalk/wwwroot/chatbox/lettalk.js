@@ -105,7 +105,6 @@ function connectSignalR() {
             "message": message
         }).then(function (response) {
             // handle response
-            console.log(response)
         }).catch(function (err) {
             console.error(err);
         });
