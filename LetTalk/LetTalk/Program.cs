@@ -1,5 +1,6 @@
 using LetTalk.Client.Pages;
 using LetTalk.Components;
+using LetTalk.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+builder.Services.AddCors(f => f.AddPolicy("CORS", policy =>
+{
+    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+}));
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -22,6 +30,8 @@ else
     app.UseHsts();
 }
 
+app.UseCors("CORS");
+
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
@@ -31,5 +41,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(LetTalk.Client._Imports).Assembly);
+
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();
