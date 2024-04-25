@@ -50,12 +50,28 @@ function injectUI() {
                 <h1>Chat</h1>
 
                 <label for="msg"><b>Message</b></label>
-                <div id="lettalkMessages"></div>
+                <div id="lettalkMessages" style="max-height: 30vh; overflow-y: auto;"></div>
                 <input type="text" required style={width:100%} id="lettalkInput"/>
                 <button type="button" class="btn" onclick="onSend()">Send</button>
+                <button type="button" class="btn" onclick="onClear()">Clear</button>
+                <button type="button" class="btn" onclick="onJoin()">Join</button>
                 <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
               </div>
             </div>`);
+}
+
+function onClear() {
+    chatdb.destroy(function (err, response) {
+        chatdb = new PouchDB('chatdb');
+    });
+    $("div#lettalkMessages").empty();
+}
+
+function onJoin() {
+    var roomId = prompt("enter room id");
+    if (roomId) {
+        signalRConnection.invoke("JoinRoom", roomId)
+    }
 }
 
 function openForm() {
@@ -72,7 +88,7 @@ function closeForm() {
 function onSend() {
     var value = $("input#lettalkInput");
     if (value.val()) {
-        signalRConnection?.invoke("SendMessage", value.val());
+        signalRConnection?.invoke("SendMessage", "1", value.val());
     }
     value.val("");
 }
@@ -111,7 +127,9 @@ function connectSignalR() {
     })
 
     // Start the signalRConnection.
-    start();
+    start().then(() => {
+        //signalRConnection.invoke("JoinRoom", "1");
+    });
 };
 
 function initDbConnection() {
@@ -135,10 +153,11 @@ function initLocalMessages() {
         include_docs: true,
         attachments: true
     }).then(function (result) {
-        var todayMessages = result?.rows?.filter(x => new Date(x?.id).withoutTime() - new Date().withoutTime() == 0);
+        var todayMessages = result?.rows?.filter(x => new Date(x?.id).withoutTime() - new Date().withoutTime() == 0).map(x => x?.doc?.message) ?? [];
         var messages = todayMessages?.rows?.map(x => x?.doc?.message);
-        messages?.forEach(message => {
-            $("div#lettalkMessages").append(`<p>${message}</p>`);
+        todayMessages.forEach(x => {
+            console.log(x)
+            $("div#lettalkMessages").append(`<p>${x}</p>`);
         })
     }).catch(function (err) {
         console.log(err);

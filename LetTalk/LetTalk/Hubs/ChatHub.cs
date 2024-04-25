@@ -14,8 +14,13 @@ public class ChatHub : Hub<IChatHub>
         return base.OnConnectedAsync();
     }
 
-    public async Task SendMessage(string message)
+    public async Task SendMessage(string roomId, string message)
     {
-        await Clients.All.ReceiveMessage(message);
+        await Clients.Group(roomId).ReceiveMessage(message);
+    }
+
+    public async Task JoinRoom(string roomId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
     }
 }
