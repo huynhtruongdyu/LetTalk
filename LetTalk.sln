@@ -7,6 +7,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LetTalk", "LetTalk\LetTalk\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LetTalk.Client", "LetTalk\LetTalk.Client\LetTalk.Client.csproj", "{35D0E6CF-630B-4473-AEAA-24FF89415640}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{0B0E4C1A-D6B3-4B76-8432-DF3820DAB28F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Example", "Example", "{67D30BB8-0A4C-4B7D-9A8A-AB5802C30246}"
+	ProjectSection(SolutionItems) = preProject
+		Example\index.html = Example\index.html
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +31,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{67D30BB8-0A4C-4B7D-9A8A-AB5802C30246} = {0B0E4C1A-D6B3-4B76-8432-DF3820DAB28F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {99FCC6DC-84E3-4164-B93F-10C9FEEFFCC8}
