@@ -13,5 +13,11 @@
   "library": "jquery@3.7.1",
   "destination": "wwwroot/lib/jquery/"
 }
+,
+{
+  "provider": "cdnjs",
+  "library": "pouchdb@8.0.1",
+  "destination": "wwwroot/lib/pouchdb/"
+}
 ]
 }

@@ -1,5 +1,5 @@
-
-var connection = null;
+var signalRConnection = null;
+var chatdb = null;
 var app = null;
 
 document.addEventListener("DOMContentLoaded", function (event) {
@@ -7,11 +7,16 @@ document.addEventListener("DOMContentLoaded", function (event) {
     injectLibs();
     setTimeout(() => {
         injectUI();
+        initDbConnection();
+        initLocalMessages();
     }, 3000);
-
-
 });
 
+Date.prototype.withoutTime = function () {
+    var d = new Date(this);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
 
 function injectLibs() {
     var jqueryScipt = document.createElement("script");
@@ -22,8 +27,13 @@ function injectLibs() {
     signalRScipt.src = "https://localhost:7055/lib/microsoft-signalr/signalr.min.js";
     signalRScipt.crossorigin = "anonymous";
 
+    var pouchdbScipt = document.createElement("script");
+    pouchdbScipt.src = "https://localhost:7055/lib/pouchdb/pouchdb.min.js";
+    pouchdbScipt.crossorigin = "anonymous";
+
     document.body.appendChild(jqueryScipt);
     document.body.appendChild(signalRScipt);
+    document.body.appendChild(pouchdbScipt);
 }
 
 function injectUI() {
@@ -49,7 +59,7 @@ function injectUI() {
 }
 
 function openForm() {
-    if (connection == null) {
+    if (signalRConnection == null) {
         connectSignalR();
     }
     document.getElementById("myForm").style.display = "block";
@@ -62,13 +72,13 @@ function closeForm() {
 function onSend() {
     var value = $("input#lettalkInput");
     if (value.val()) {
-        connection?.invoke("SendMessage", value.val());
+        signalRConnection?.invoke("SendMessage", value.val());
     }
     value.val("");
 }
 
 function connectSignalR() {
-    connection = new signalR.HubConnectionBuilder()
+    signalRConnection = new signalR.HubConnectionBuilder()
         .withUrl("https://localhost:7055/chathub", {
             skipNegotiation: true,
             transport: signalR.HttpTransportType.WebSockets
@@ -78,7 +88,7 @@ function connectSignalR() {
 
     async function start() {
         try {
-            await connection.start();
+            await signalRConnection.start();
             console.log("SignalR Connected.");
         } catch (err) {
             console.log(err);
@@ -86,15 +96,52 @@ function connectSignalR() {
         }
     };
 
-    connection.onclose(async () => {
+    signalRConnection.onclose(async () => {
         await start();
     });
-    connection.on("ReceiveMessage", (message) => {
-        $("div#lettalkMessages").append(`<p>${message}</p>`);
-        console.log(message);
+    signalRConnection.on("ReceiveMessage", (message) => {
+        chatdb?.post({
+            "_id": new Date().toString(),
+            "message": message
+        }).then(function (response) {
+            // handle response
+            console.log(response)
+        }).catch(function (err) {
+            console.error(err);
+        });
     })
 
-    // Start the connection.
+    // Start the signalRConnection.
     start();
-}
+};
 
+function initDbConnection() {
+    chatdb = new PouchDB('chatdb');
+    chatdb.changes({
+        since: 'now',
+        live: true,
+        include_docs: true
+    }).on('change', function (change) {
+        // handle change
+        $("div#lettalkMessages").append(`<p>${change.doc?.message}</p>`);
+    }).on('complete', function (info) {
+        // changes() was canceled
+    }).on('error', function (err) {
+        console.log(err);
+    });
+};
+
+function initLocalMessages() {
+    chatdb.allDocs({
+        include_docs: true,
+        attachments: true
+    }).then(function (result) {
+        var todayMessages = result?.rows?.filter(x => new Date(x?.id).withoutTime() - new Date().withoutTime() == 0);
+        var messages = todayMessages?.rows?.map(x => x?.doc?.message);
+        messages?.forEach(message => {
+            $("div#lettalkMessages").append(`<p>${message}</p>`);
+        })
+    }).catch(function (err) {
+        console.log(err);
+    });
+}
