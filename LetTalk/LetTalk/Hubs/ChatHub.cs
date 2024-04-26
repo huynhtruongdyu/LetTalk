@@ -23,4 +23,9 @@ public class ChatHub : Hub<IChatHub>
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
     }
+
+    public async Task OutRoom(string roomId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
+    }
 }

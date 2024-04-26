@@ -1,165 +1,122 @@
 var signalRConnection = null;
-var chatdb = null;
 var app = null;
 
 document.addEventListener("DOMContentLoaded", function (event) {
-    //do work
-    injectLibs();
-    setTimeout(() => {
-        injectUI();
-        initDbConnection();
-        initLocalMessages();
-    }, 3000);
+  injectLibs();
+  setTimeout(() => {
+    injectUI();
+  }, 3000);
 });
 
+window.onbeforeunload = function (event) {
+  var roomId = localStorage.getItem("roomId");
+  if (roomId) {
+    signalRConnection?.invoke("OutRoom", roomId);
+    localStorage.removeItem("roomId");
+  }
+};
+
 Date.prototype.withoutTime = function () {
-    var d = new Date(this);
-    d.setHours(0, 0, 0, 0);
-    return d;
-}
+  var d = new Date(this);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
 function injectLibs() {
-    var jqueryScipt = document.createElement("script");
-    jqueryScipt.src = "https://localhost:7055/lib/jquery/jquery.min.js";
-    jqueryScipt.crossorigin = "anonymous";
+  var jqueryScipt = document.createElement("script");
+  jqueryScipt.src = "https://localhost:7055/lib/jquery/jquery.min.js";
+  jqueryScipt.crossorigin = "anonymous";
 
-    var signalRScipt = document.createElement("script");
-    signalRScipt.src = "https://localhost:7055/lib/microsoft-signalr/signalr.min.js";
-    signalRScipt.crossorigin = "anonymous";
+  var signalRScipt = document.createElement("script");
+  signalRScipt.src =
+    "https://localhost:7055/lib/microsoft-signalr/signalr.min.js";
+  signalRScipt.crossorigin = "anonymous";
 
-    var pouchdbScipt = document.createElement("script");
-    pouchdbScipt.src = "https://localhost:7055/lib/pouchdb/pouchdb.min.js";
-    pouchdbScipt.crossorigin = "anonymous";
-
-    document.body.appendChild(jqueryScipt);
-    document.body.appendChild(signalRScipt);
-    document.body.appendChild(pouchdbScipt);
+  document.body.appendChild(jqueryScipt);
+  document.body.appendChild(signalRScipt);
 }
 
 function injectUI() {
-    var chatboxStyle = document.createElement("link");
-    chatboxStyle.href = "https://localhost:7055/chatbox/lettalk.css";
-    chatboxStyle.rel = "stylesheet";
-    document.head.appendChild(chatboxStyle);
+  var chatboxStyle = document.createElement("link");
+  chatboxStyle.href = "https://localhost:7055/chatbox/lettalk.css";
+  chatboxStyle.rel = "stylesheet";
+  document.head.appendChild(chatboxStyle);
 
-    app = $("#lettalk");
-    app.append(`
-            <button class="open-button" onclick="openForm()">Chat</button>
-            <div class="chat-popup" id="myForm">
-              <div class="form-container">
-                <h1>Chat</h1>
+  app = $("#lettalk");
+  app.append(`
+    <button class="open-button" onclick="openForm()">Chat</button>
+    <div class="chat-popup" id="myForm">
+        <div class="form-container">
+        <h1>Chat</h1>
 
-                <label for="msg"><b>Message</b></label>
-                <div id="lettalkMessages" style="max-height: 30vh; overflow-y: auto;"></div>
-                <input type="text" required style={width:100%} id="lettalkInput"/>
-                <button type="button" class="btn" onclick="onSend()">Send</button>
-                <button type="button" class="btn" onclick="onClear()">Clear</button>
-                <button type="button" class="btn" onclick="onJoin()">Join</button>
-                <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
-              </div>
-            </div>`);
+        <label for="msg"><b>Message</b></label>
+        <div id="lettalkMessages" style="max-height: 30vh; overflow-y: auto;"></div>
+        <input type="text" required style={width:100%} id="lettalkInput"/>
+        <button type="button" class="btn" onclick="onSend()">Send</button>
+        <button type="button" class="btn" onclick="onClear()">Clear</button>
+        <button type="button" class="btn" onclick="onJoin()">Join</button>
+        <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
+        </div>
+    </div>`);
 }
 
 function onClear() {
-    chatdb.destroy(function (err, response) {
-        chatdb = new PouchDB('chatdb');
-    });
-    $("div#lettalkMessages").empty();
+  $("div#lettalkMessages").empty();
 }
 
 function onJoin() {
-    var roomId = prompt("enter room id");
-    if (roomId) {
-        signalRConnection.invoke("JoinRoom", roomId)
-    }
+  var roomId = prompt("enter room id");
+  if (roomId) {
+    signalRConnection.invoke("JoinRoom", roomId);
+    localStorage.setItem("roomId", roomId);
+  }
 }
 
 function openForm() {
-    if (signalRConnection == null) {
-        connectSignalR();
-    }
-    document.getElementById("myForm").style.display = "block";
+  if (signalRConnection == null) {
+    connectSignalR();
+  }
+  document.getElementById("myForm").style.display = "block";
 }
 
 function closeForm() {
-    document.getElementById("myForm").style.display = "none";
+  document.getElementById("myForm").style.display = "none";
 }
 
 function onSend() {
-    var value = $("input#lettalkInput");
-    if (value.val()) {
-        signalRConnection?.invoke("SendMessage", "1", value.val());
-    }
-    value.val("");
+  var value = $("input#lettalkInput");
+  if (value.val()) {
+    signalRConnection?.invoke("SendMessage", "1", value.val());
+  }
+  value.val("");
 }
 
 function connectSignalR() {
-    signalRConnection = new signalR.HubConnectionBuilder()
-        .withUrl("https://localhost:7055/chathub", {
-            skipNegotiation: true,
-            transport: signalR.HttpTransportType.WebSockets
-        })
-        .configureLogging(signalR.LogLevel.Debug)
-        .build();
-
-    async function start() {
-        try {
-            await signalRConnection.start();
-            console.log("SignalR Connected.");
-        } catch (err) {
-            console.log(err);
-            setTimeout(start, 5000);
-        }
-    };
-
-    signalRConnection.onclose(async () => {
-        await start();
-    });
-    signalRConnection.on("ReceiveMessage", (message) => {
-        chatdb?.post({
-            "_id": new Date().toString(),
-            "message": message
-        }).then(function (response) {
-            // handle response
-        }).catch(function (err) {
-            console.error(err);
-        });
+  signalRConnection = new signalR.HubConnectionBuilder()
+    .withUrl("https://localhost:7055/chathub", {
+      skipNegotiation: true,
+      transport: signalR.HttpTransportType.WebSockets,
     })
+    .configureLogging(signalR.LogLevel.Debug)
+    .build();
 
-    // Start the signalRConnection.
-    start().then(() => {
-        //signalRConnection.invoke("JoinRoom", "1");
-    });
-};
+  async function start() {
+    try {
+      await signalRConnection.start();
+      console.log("SignalR Connected.");
+    } catch (err) {
+      console.log(err);
+      setTimeout(start, 5000);
+    }
+  }
 
-function initDbConnection() {
-    chatdb = new PouchDB('chatdb');
-    chatdb.changes({
-        since: 'now',
-        live: true,
-        include_docs: true
-    }).on('change', function (change) {
-        // handle change
-        $("div#lettalkMessages").append(`<p>${change.doc?.message}</p>`);
-    }).on('complete', function (info) {
-        // changes() was canceled
-    }).on('error', function (err) {
-        console.log(err);
-    });
-};
+  signalRConnection.onclose(async () => {
+    await start();
+  });
+  signalRConnection.on("ReceiveMessage", (message) => {
+    $("div#lettalkMessages").append(`<p>${message}</p>`);
+  });
 
-function initLocalMessages() {
-    chatdb.allDocs({
-        include_docs: true,
-        attachments: true
-    }).then(function (result) {
-        var todayMessages = result?.rows?.filter(x => new Date(x?.id).withoutTime() - new Date().withoutTime() == 0).map(x => x?.doc?.message) ?? [];
-        var messages = todayMessages?.rows?.map(x => x?.doc?.message);
-        todayMessages.forEach(x => {
-            console.log(x)
-            $("div#lettalkMessages").append(`<p>${x}</p>`);
-        })
-    }).catch(function (err) {
-        console.log(err);
-    });
+  // Start the signalRConnection.
+  start().then(() => {});
 }
